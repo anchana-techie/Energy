@@ -435,9 +435,10 @@ class EnergyEngine:
         H = self.H
 
         live = set(states)
+        merged = two is not None and two.pose == TOGETHER and len(states) >= 2   # one shared orb
         for label, st in states.items():
             fx = self.hands.setdefault(label, HandFX())
-            self._update_hand(fx, st, t, dt)
+            self._update_hand(fx, st, t, dt, merged)
         for label, fx in list(self.hands.items()):
             fx.active = label in live
             if label not in live:
@@ -454,7 +455,7 @@ class EnergyEngine:
         self._update_whips(dt, t)
         self.particles.update(dt, t, self.attractors)
 
-    def _update_hand(self, fx, st, t, dt):
+    def _update_hand(self, fx, st, t, dt, merged=False):
         H, I = self.H, self.intensity
         fx.state, fx.seen = st, t
         pts = st.pts
@@ -478,6 +479,8 @@ class EnergyEngine:
         bob = math.sin(t * 3.2 + fx.phase) * size * 0.06
         palm = st.palm + st.direction * (size * config.ANCHOR_DISTANCE + bob)
         fx.anchor = palm
+        if merged:
+            pose = NONE          # the two-hand orb replaces the per-hand orbs
         # --- activation bursts
         if pose != fx.last_pose:
             if pose == OPEN_PALM:
@@ -495,13 +498,13 @@ class EnergyEngine:
 
         # --- ambient aura particles orbiting every hand
         if pose != NONE:
-            self._emit_ring(palm, size * 1.5, self._count(35 + 80 * fx.charge, dt), 160, 20)
+            self._emit_ring(palm, size * 0.9, self._count(35 + 80 * fx.charge, dt), 160, 20)
         self.attractors.append((palm[0], palm[1], 380 + 500 * fx.charge, 300 + 300 * fx.charge, size * 1.8))
 
         # --- pose behaviour
         if pose == OPEN_PALM:
             ch = fx.charge
-            self._emit_ring(palm, size * (1.8 + ch), self._count(90 + 380 * ch, dt), 200 + 150 * ch, 90 + 120 * ch)
+            self._emit_ring(palm, size * (1.0 + 0.5 * ch), self._count(90 + 380 * ch, dt), 200 + 150 * ch, 90 + 120 * ch)
             if ch > 0.2 or self.rng.random() < 0.3:
                 for _ in range(1 + int(ch * 2)):
                     tip = pts[self.rng.choice([4, 8, 12, 16, 20])]
@@ -806,22 +809,26 @@ class EnergyEngine:
     def _draw_hand(self, fx, f):
         st, bank, t, I = f.state, self.bank, self.t, self.intensity
         palm, size, pose = f.anchor if f.anchor is not None else st.palm, st.size_px, st.pose
+        share = 1.0 - self.amt[TOGETHER]     # fade per-hand orbs as the shared orb forms
+        if share < 0.15:
+            return
+        I *= share
         rot = (t * 70 + f.phase * 50) % 360
         if pose == OPEN_PALM:
             ch = f.charge
-            r = size * (0.55 + 0.5 * ch) * (1 + 0.05 * math.sin(t * 7)) * min(1.5, 0.7 + 0.4 * I)
-            self._spr("halo", palm, r * 3.0, (0.55 + 0.5 * ch) * I)
-            self._spr("swirl", palm, r * 1.5, (0.55 + 0.4 * ch) * I, angle=rot)
-            self._spr("swirl", palm, r * 1.1, (0.5 + 0.3 * ch) * I, angle=-rot * 1.6)
-            self._spr("orb", palm, r, (0.8 + 0.5 * ch) * min(1.3, I))
+            r = size * (0.32 + 0.2 * ch) * (1 + 0.05 * math.sin(t * 7)) * min(1.4, 0.7 + 0.35 * I)
+            self._spr("halo", palm, r * 2.2, (0.4 + 0.25 * ch) * I)
+            self._spr("swirl", palm, r * 1.4, (0.45 + 0.25 * ch) * I, angle=rot)
+            self._spr("swirl", palm, r * 1.05, (0.4 + 0.2 * ch) * I, angle=-rot * 1.6)
+            self._spr("orb", palm, r, (0.6 + 0.3 * ch) * min(1.2, I))
         elif pose == FIST:
             k = f.compress
             freq = 2.5 + 7 * k * (1 + st.hold * 0.2)
             pulse = 1 + (0.08 + 0.2 * k) * math.sin(t * freq * TAU / 2)
-            r = size * (0.42 - 0.12 * k) * pulse * min(1.5, 0.7 + 0.4 * I)
-            self._spr("halo", palm, r * 3.2, (0.5 + 0.5 * k) * I)
-            self._spr("orb", palm, r * 1.5, 1.0 + 0.3 * k)
-            self._spr("orb", palm, r, 1.6)
+            r = size * (0.3 - 0.1 * k) * pulse * min(1.4, 0.7 + 0.35 * I)
+            self._spr("halo", palm, r * 2.6, (0.4 + 0.3 * k) * I)
+            self._spr("orb", palm, r * 1.4, 0.7 + 0.2 * k)
+            self._spr("orb", palm, r, 1.0)
         elif pose == POINT:
             tip = st.pts[8]
             self._draw_beam(fx, f, st)

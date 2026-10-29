@@ -68,7 +68,7 @@ TRAIL_SPEED_MAX = 3.5
 
 RAISED_Y = 0.48               # wrists above this fraction of height = "raised"
 APART_DIST = 0.75             # hand distance (in H) above which "apart" holds
-TOGETHER_DIST = 0.42          # hand distance below which "together" holds
+TOGETHER_DIST = 0.55          # hand distance below which "together" holds
 TWO_HAND_HOLD = 0.12          # seconds a two-hand pose must persist
 
 CHARGE_FULL_TIME = 4.0        # seconds of holding open palm for max aura
@@ -76,4 +76,4 @@ CHARGE_FULL_TIME = 4.0        # seconds of holding open palm for max aura
 # Palm orientation: score above ENTER shows the palm to the camera; below LEAVE hides energy
 FACING_ENTER = 0.18
 FACING_LEAVE = 0.06
-ANCHOR_DISTANCE = 1.5         # energy floats this many palm-sizes beyond the palm centre
+ANCHOR_DISTANCE = 0.75        # energy hovers this many palm-sizes beyond the palm centre (0 = centred on palm)
